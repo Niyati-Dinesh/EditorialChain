@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './lib/auth.js';
 import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
+import ErrorBoundary from './components/ui/ErrorBoundary.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import DailyArticlePage from './pages/DailyArticlePage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
@@ -72,9 +73,11 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 export default App;

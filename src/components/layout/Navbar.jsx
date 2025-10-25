@@ -1,11 +1,28 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../lib/auth.js';
+import { 
+  Menu, 
+  X, 
+  BookOpen, 
+  Trophy, 
+  Settings, 
+  User, 
+  LogOut, 
+  Flame,
+  Bell,
+  Search,
+  Home
+} from 'lucide-react';
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(12); // Mock data
+  const [notifications, setNotifications] = useState(3); // Mock data
+  const location = useLocation();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -19,6 +36,7 @@ const Navbar = () => {
       await signOut(auth);
       console.log('User signed out');
       setIsDropdownOpen(false);
+      setIsMobileMenuOpen(false);
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -32,147 +50,244 @@ const Navbar = () => {
     setIsDropdownOpen(false);
   };
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
+
+  const navItems = [
+    { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/article', label: 'Read', icon: BookOpen },
+    { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
+
   return (
-    <nav className="bg-indigo-600 text-white p-4 flex justify-between items-center relative">
-      <Link to="/" className="text-xl font-bold">
-        EditorialChain
-      </Link>
-      <div className="flex items-center space-x-6">
-        <Link to="/article" className="hover:underline">
-          Read
-        </Link>
-        <Link to="/leaderboard" className="hover:underline">
-          Leaderboard
-        </Link>
-        <Link to="/settings" className="hover:underline">
-          Settings
-        </Link>
+    <nav className="bg-indigo-600 text-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+            </div>
+            <span className="text-xl font-bold">EditorialChain</span>
+          </Link>
 
-        {/* Profile Dropdown */}
-        <div className="relative">
-          <button
-            onClick={toggleDropdown}
-            className="flex items-center space-x-2 focus:outline-none"
-          >
-            <img
-              src={user?.photoURL || '/default-avatar.png'}
-              alt="Profile"
-              className="w-8 h-8 rounded-full border-2 border-indigo-300 hover:border-white transition duration-200"
-            />
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${
-                isDropdownOpen ? 'rotate-180' : ''
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <>
-              {/* Backdrop to close dropdown */}
-              <div className="fixed inset-0 z-10" onClick={closeDropdown}></div>
-
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
-                <div className="px-4 py-3 border-b border-gray-200">
-                  <p className="text-sm text-gray-900 font-medium">
-                    {user?.displayName || 'Anonymous User'}
-                  </p>
-                  <p className="text-sm text-gray-600 truncate">
-                    {user?.email}
-                  </p>
-                </div>
-
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
                 <Link
-                  to="/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-200"
-                  onClick={closeDropdown}
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(item.path)
+                      ? 'bg-indigo-700 text-white'
+                      : 'text-indigo-100 hover:bg-indigo-700 hover:text-white'
+                  }`}
                 >
-                  <div className="flex items-center space-x-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    <span>View Profile</span>
-                  </div>
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
                 </Link>
+              );
+            })}
+          </div>
 
-                <Link
-                  to="/settings"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-200"
-                  onClick={closeDropdown}
+          {/* Desktop User Section */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Streak Display */}
+            <div className="flex items-center space-x-2 bg-indigo-700 px-3 py-1 rounded-full">
+              <Flame className="w-4 h-4 text-orange-400" />
+              <span className="text-sm font-medium">{currentStreak}</span>
+            </div>
+
+            {/* Notifications */}
+            <button className="relative p-2 text-indigo-100 hover:text-white hover:bg-indigo-700 rounded-md transition-colors">
+              <Bell className="w-5 h-5" />
+              {notifications > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {notifications}
+                </span>
+              )}
+            </button>
+
+            {/* Search */}
+            <button className="p-2 text-indigo-100 hover:text-white hover:bg-indigo-700 rounded-md transition-colors">
+              <Search className="w-5 h-5" />
+            </button>
+
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={toggleDropdown}
+                className="flex items-center space-x-2 focus:outline-none p-2 rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                <img
+                  src={user?.photoURL || '/default-avatar.png'}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full border-2 border-indigo-300 hover:border-white transition duration-200"
+                />
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <div className="flex items-center space-x-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <span>Settings</span>
-                  </div>
-                </Link>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
 
-                <div className="border-t border-gray-200 mt-1">
-                  <button
-                    onClick={handleSignOut}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition duration-200"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                        />
-                      </svg>
-                      <span>Sign Out</span>
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={closeDropdown}></div>
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-2 z-20 border border-gray-200">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="text-sm text-gray-900 font-medium">
+                        {user?.displayName || 'Anonymous User'}
+                      </p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {user?.email}
+                      </p>
                     </div>
+
+                    <Link
+                      to="/profile"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-200"
+                      onClick={closeDropdown}
+                    >
+                      <User className="w-4 h-4 mr-3" />
+                      <span>View Profile</span>
+                    </Link>
+
+                    <Link
+                      to="/settings"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition duration-200"
+                      onClick={closeDropdown}
+                    >
+                      <Settings className="w-4 h-4 mr-3" />
+                      <span>Settings</span>
+                    </Link>
+
+                    <div className="border-t border-gray-200 mt-1">
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition duration-200"
+                      >
+                        <LogOut className="w-4 h-4 mr-3" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <button
+              onClick={toggleMobileMenu}
+              className="p-2 text-indigo-100 hover:text-white hover:bg-indigo-700 rounded-md transition-colors"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 bg-indigo-700 rounded-lg mt-2">
+              {/* Mobile Streak Display */}
+              <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center space-x-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm font-medium">Current Streak: {currentStreak} days</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button className="p-1 text-indigo-100 hover:text-white">
+                    <Bell className="w-5 h-5" />
+                    {notifications > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                        {notifications}
+                      </span>
+                    )}
+                  </button>
+                  <button className="p-1 text-indigo-100 hover:text-white">
+                    <Search className="w-5 h-5" />
                   </button>
                 </div>
               </div>
-            </>
-          )}
-        </div>
+
+              {/* Mobile Navigation Items */}
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeMobileMenu}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      isActive(item.path)
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-indigo-100 hover:bg-indigo-600 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {/* Mobile User Section */}
+              <div className="border-t border-indigo-600 pt-2">
+                <div className="px-3 py-2">
+                  <p className="text-sm text-indigo-200 font-medium">
+                    {user?.displayName || 'Anonymous User'}
+                  </p>
+                  <p className="text-xs text-indigo-300 truncate">
+                    {user?.email}
+                  </p>
+                </div>
+                <Link
+                  to="/profile"
+                  onClick={closeMobileMenu}
+                  className="flex items-center space-x-2 px-3 py-2 text-indigo-100 hover:bg-indigo-600 hover:text-white rounded-md transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                  <span>View Profile</span>
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 w-full px-3 py-2 text-red-300 hover:bg-red-600 hover:text-white rounded-md transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
 };
+
 export default Navbar;
