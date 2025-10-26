@@ -12,7 +12,6 @@
 [![Powered by NewsData.io](https://img.shields.io/badge/NewsData.io-API-orange?style=flat)](https://newsdata.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat)](LICENSE)
 
-[Live Demo](#) • [Report Bug](#) • [Request Feature](#)
 
 </div>
 
