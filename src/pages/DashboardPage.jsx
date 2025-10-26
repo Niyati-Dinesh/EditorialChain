@@ -1,207 +1,365 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-// Mock data (replace with real data from Firebase/Auth or API)
-const mockUserStats = {
-  streak: 7,
-  totalWords: 15000,
-  avgWordsPerDay: 2143,
-};
-
-const mockUser = {
-  name: 'Kunal Sharma',
-  email: 'kunal@example.com',
-  summary: 'Avid reader and tech enthusiast passionate about learning and exploring new topics.',
-};
-
-// Mock articles (replace with API-based recommendations)
-const mockArticles = [
-  {
-    id: 1,
-    title: 'Economy Update: GDP Growth',
-    preview: 'India\'s GDP is projected to grow by 7.5% in the next quarter, driven by strong manufacturing and services sectors. Key factors include increased exports and government spending on infrastructure, which are expected to boost economic stability. Analysts predict a positive outlook if current trends continue, with potential impacts on job creation and inflation rates.',
-    topic: 'Economy',
-    source: 'Economic Times',
-  },
-  {
-    id: 2,
-    title: 'Environmental Policies in India',
-    preview: 'New policies aim to reduce carbon emissions by 45% by 2030, focusing on renewable energy sources like solar and wind. The government is offering incentives for green tech adoption, targeting a sustainable future. Challenges include funding and public awareness, but experts see this as a critical step toward net-zero goals.',
-    topic: 'Environment',
-    source: 'The Hindu',
-  },
-  {
-    id: 3,
-    title: 'International Relations: India-US Ties',
-    preview: 'A recent summit has strengthened bilateral ties between India and the US, with agreements on defense and technology transfer. The focus is on countering regional threats and boosting trade, with both nations committing to joint military exercises. This partnership could reshape global alliances in the coming years.',
-    topic: 'IR',
-    source: 'BBC News',
-  },
-  {
-    id: 4,
-    title: 'Master DSA with GeeksforGeeks',
-    preview: 'GeeksforGeeks offers a comprehensive guide to Data Structures and Algorithms (DSA), ideal for coding enthusiasts. With tutorials on arrays, linked lists, and dynamic programming, it’s a go-to resource for preparing for interviews at top tech companies. Practice problems range from beginner to advanced levels.',
-    topic: 'Tech/Education',
-    source: 'GeeksforGeeks',
-  },
-  {
-    id: 5,
-    title: 'CodeChef Contests This Month',
-    preview: 'CodeChef is hosting multiple coding contests this month, featuring challenges for all skill levels. Participants can earn ratings and prizes, with problems designed to enhance problem-solving skills. The platform also provides editorials and tutorials post-contest to aid learning.',
-    topic: 'Tech/Education',
-    source: 'CodeChef',
-  },
-  {
-    id: 6,
-    title: 'LeetCode Premium Problems',
-    preview: 'LeetCode’s premium subscription unlocks advanced problems and mock interviews, perfect for tech job preparation. Topics include system design and optimized solutions, with a community-driven approach to learning. It’s a valuable tool for mastering competitive programming.',
-    topic: 'Tech/Education',
-    source: 'LeetCode',
-  },
-];
+import { BookOpen, TrendingUp, ChevronLeft, ChevronRight, User, Award, Settings, BarChart3, Home } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../lib/auth.js';
 
 const DashboardPage = () => {
-  const [stats, setStats] = useState(mockUserStats);
-  const [articles, setArticles] = useState(mockArticles);
+  const [user, setUser] = useState(null);
+  const [stats, setStats] = useState({
+    streak: 0,
+    totalWords: 0,
+    avgWordsPerDay: 0,
+  });
+  const [articles, setArticles] = useState([]);
   const [currentArticleIndex, setCurrentArticleIndex] = useState(0);
   const [hasDailyGoal, setHasDailyGoal] = useState(false);
   const [dailyGoal, setDailyGoal] = useState(2000);
-  const [streakHistory, setStreakHistory] = useState([
-    { day: 1, words: 1000 },
-    { day: 2, words: 1200 },
-    { day: 3, words: 1500 },
-    { day: 4, words: 1800 },
-    { day: 7, words: 2000 },
-  ]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch real data from Firebase/Auth for user and stats
-    // TODO: Fetch API-based recommendations (e.g., GFG, CodeChef, LeetCode APIs)
-    // Example API call structure:
-    // fetch('https://api.example.com/articles?topics=tech,education')
-    //   .then(response => response.json())
-    //   .then(data => setArticles(data));
+    // Listen to Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser({
+          uid: currentUser.uid,
+          name: currentUser.displayName || 'User',
+          email: currentUser.email,
+          photoURL: currentUser.photoURL
+        });
+        
+        // Load user stats from localStorage
+        const storedStats = localStorage.getItem(`stats_${currentUser.uid}`);
+        if (storedStats) {
+          setStats(JSON.parse(storedStats));
+        }
+        
+        // Load goal settings from localStorage
+        const storedGoal = localStorage.getItem(`goal_${currentUser.uid}`);
+        if (storedGoal) {
+          const goalData = JSON.parse(storedGoal);
+          setHasDailyGoal(goalData.hasDailyGoal);
+          setDailyGoal(goalData.dailyGoal);
+        }
+      } else {
+        window.location.href = '/login';
+      }
+      setLoading(false);
+    });
 
-    // Auto-advance carousel every 5 seconds
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Fetch recommended articles from NewsData.io
+    const fetchArticles = async () => {
+      try {
+        const apiKey = import.meta.env.VITE_NEWS_DATA_API_KEY;
+        const topics = ['technology', 'education', 'politics', 'business'];
+        const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+        
+        const response = await fetch(
+          `https://newsdata.io/api/1/news?apikey=${apiKey}&country=in&language=en&category=${randomTopic}`
+        );
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          setArticles(data.results.slice(0, 6) || []);
+        }
+      } catch (error) {
+        console.error('Error fetching articles:', error);
+      }
+    };
+
+    if (user) {
+      fetchArticles();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (articles.length === 0) return;
+    
     const interval = setInterval(() => {
       setCurrentArticleIndex((prev) => (prev + 1) % articles.length);
-    }, 5000);
+    }, 7000);
 
     return () => clearInterval(interval);
   }, [articles.length]);
 
-  const handleAddWords = () => {
-    setStats((prev) => ({
-      ...prev,
-      totalWords: prev.totalWords + 1000,
-      avgWordsPerDay: Math.round((prev.totalWords + 1000) / (prev.streak + 1)),
-    }));
+  const toggleDailyGoal = () => {
+    const newGoalStatus = !hasDailyGoal;
+    setHasDailyGoal(newGoalStatus);
+    
+    if (user) {
+      localStorage.setItem(`goal_${user.uid}`, JSON.stringify({
+        hasDailyGoal: newGoalStatus,
+        dailyGoal: newGoalStatus ? dailyGoal : 0
+      }));
+    }
   };
 
-  const toggleDailyGoal = () => {
-    setHasDailyGoal(!hasDailyGoal);
-    if (!hasDailyGoal) setDailyGoal(2000); // Default goal
+  const handlePrevArticle = () => {
+    setCurrentArticleIndex((prev) => 
+      prev === 0 ? articles.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextArticle = () => {
+    setCurrentArticleIndex((prev) => (prev + 1) % articles.length);
   };
 
   const progress = hasDailyGoal ? Math.min((stats.avgWordsPerDay / dailyGoal) * 100, 100) : 0;
+  const streakPercentage = Math.min((stats.streak / 30) * 100, 100);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-100 to-gray-100 p-6 font-sans text-gray-800'>
-      {/* Sidebar for Quick Access and User Info - Always visible */}
-      <aside className='fixed top-0 left-0 h-full w-64 bg-white shadow-lg p-6 flex flex-col justify-between'>
-        <div>
-          <h1 className='text-2xl font-medium mb-8'>EditorialChain</h1>
-          {/* Highlighted User Information */}
-          <div className='mb-6 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg'>
-            <h3 className='text-lg font-medium text-indigo-700'>Welcome, {mockUser.name}</h3>
-            <p className='text-sm text-gray-600'>{mockUser.email}</p>
-            <p className='text-sm text-gray-600 mt-1'>{mockUser.summary}</p>
-          </div>
-          {/* Navigation */}
-          <nav className='flex flex-col space-y-4'>
-            <Link to='/leaderboard' className='text-lg hover:text-indigo-600 transition-colors'>Leaderboard</Link>
-            <Link to='/settings' className='text-lg hover:text-indigo-600 transition-colors'>Settings</Link>
-            <Link to='/about' className='text-lg hover:text-indigo-600 transition-colors'>About</Link>
-          </nav>
-        </div>
-        <button className='text-sm text-gray-500 hover:text-gray-700' onClick={handleAddWords}>
-          Add 1000 Words (Test)
-        </button>
-      </aside>
-
-      {/* Main Content */}
-      <main className='ml-64 p-6'>
-        {/* Stats Section with Streak Visualization */}
-        <section className='mb-12'>
-          <h2 className='text-2xl font-medium mb-4'>Your Progress</h2>
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-            <div className='bg-white p-4 rounded-lg shadow-md'>
-              <h3 className='text-lg font-medium'>Current Streak</h3>
-              <p className='text-3xl'>{stats.streak} days</p>
-              <div className='mt-2 h-1 bg-gray-200 rounded'>
-                <div style={{ width: `${(stats.streak / 30) * 100}%` }} className='h-full bg-blue-400 rounded'></div>
-              </div>
-              <div className='mt-4 text-sm flex space-x-2'>
-                {streakHistory.map((entry) => (
-                  <div key={entry.day} className='text-center'>
-                    <span>Day {entry.day}: {entry.words}w</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className='bg-white p-4 rounded-lg shadow-md'>
-              <h3 className='text-lg font-medium'>Total Words Read</h3>
-              <p className='text-3xl'>{stats.totalWords.toLocaleString()}</p>
-            </div>
-            <div className='bg-white p-4 rounded-lg shadow-md'>
-              <h3 className='text-lg font-medium'>Avg Words/Day</h3>
-              <p className='text-3xl'>{stats.avgWordsPerDay}</p>
-              <button
-                className='mt-2 text-sm text-blue-500 hover:underline'
-                onClick={toggleDailyGoal}
-              >
-                {hasDailyGoal ? 'Remove Goal' : 'Set Daily Goal'}
-              </button>
-              {hasDailyGoal && (
-                <div className='mt-2'>
-                  <div className='w-full bg-gray-200 rounded-full h-1'>
-                    <div
-                      className='bg-green-400 h-1 rounded-full'
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                  <span className='text-sm'>Goal: {dailyGoal}w | Progress: {progress.toFixed(1)}%</span>
+    <div className="bg-gradient-to-br from-slate-50 via-white to-blue-50" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+      <div className="flex">
+        {/* Sidebar - Non-sticky, only in content area */}
+        <aside className="w-72 bg-white shadow-lg border-r border-slate-200 p-6">
+          {/* User Profile Card */}
+          <div className="mb-8 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-blue-600 rounded-r-xl shadow-sm">
+            <div className="flex items-center space-x-3 mb-3">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
                 </div>
               )}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800 truncate" style={{ fontFamily: "'Libertinus Serif', serif" }}>
+                  Welcome, {user?.name?.split(' ')[0]}
+                </h3>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              </div>
             </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Avid reader passionate about learning
+            </p>
           </div>
-        </section>
 
-        {/* Article Carousel */}
-        <section>
-          <h2 className='text-2xl font-medium mb-4'>Recommended Daily Articles</h2>
-          <div className='relative overflow-hidden rounded-lg shadow-md bg-white'>
-            <div
-              className='flex transition-transform duration-500 ease-in-out'
-              style={{ transform: `translateX(-${currentArticleIndex * 100}%)` }}
+          {/* Navigation */}
+          <nav className="flex flex-col space-y-2">
+            <Link 
+              to="/"
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transition-all"
             >
-              {articles.map((article) => (
-                <div key={article.id} className='w-full flex-shrink-0 p-6'>
-                  <h3 className='text-xl font-medium mb-2'>{article.title}</h3>
-                  <p className='text-gray-600 mb-4'>
-                    {article.preview.length > 150
-                      ? article.preview.substring(0, 150) + '...'
-                      : article.preview}
-                  </p>
-                  <span className='text-sm text-gray-500'>{article.topic}</span>
-                  <p className='text-xs text-gray-400 mt-1'>Source: {article.source}</p>
-                  <Link to='/article' className='block mt-2 text-blue-500 hover:underline'>Read Now</Link>
-                </div>
-              ))}
-            </div>
+              <Home className="w-5 h-5" />
+              <span className="font-medium">Dashboard</span>
+            </Link>
+            <Link 
+              to="/article"
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-50 transition-colors text-slate-700 hover:text-blue-600"
+            >
+              <BookOpen className="w-5 h-5" />
+              <span className="font-medium">Daily Articles</span>
+            </Link>
+            <Link 
+              to="/leaderboard"
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-50 transition-colors text-slate-700 hover:text-blue-600"
+            >
+              <Award className="w-5 h-5" />
+              <span className="font-medium">Leaderboard</span>
+            </Link>
+            <Link 
+              to="/settings"
+              className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-50 transition-colors text-slate-700 hover:text-blue-600"
+            >
+              <Settings className="w-5 h-5" />
+              <span className="font-medium">Settings</span>
+            </Link>
+          </nav>
+
+          
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-slate-800 mb-2" style={{ fontFamily: "'Libertinus Serif', serif" }}>
+              <div className="flex flex-row gap-2 ">Your Reading Journey <BookOpen className='mt-2 font-bold text-medium'/></div>
+            </h2>
+            <p className="text-slate-600">Track your progress and continue building your reading habit</p>
           </div>
-        </section>
-      </main>
+
+          {/* Stats Section */}
+          <section className="mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Streak Card */}
+              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-700">Current Streak</h3>
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <span className="text-xl">🔥</span>
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-slate-800 mb-3">{stats.streak} days</p>
+                <div className="w-full bg-slate-200 rounded-full h-2">
+                  <div 
+                    style={{ width: `${streakPercentage}%` }} 
+                    className="h-full bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-500"
+                  ></div>
+                </div>
+                <p className="text-sm text-slate-500 mt-2">Keep it up! Target: 30 days</p>
+              </div>
+
+              {/* Total Words Card */}
+              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-700">Total Words</h3>
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-slate-800 mb-3">
+                  {stats.totalWords.toLocaleString()}
+                </p>
+                <p className="text-sm text-slate-500">
+                  ≈ {Math.round(stats.totalWords / 250)} articles completed
+                </p>
+              </div>
+
+              {/* Daily Average Card */}
+              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-700">Daily Average</h3>
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                <p className="text-4xl font-bold text-slate-800 mb-3">{stats.avgWordsPerDay}</p>
+                <button
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={toggleDailyGoal}
+                >
+                  {hasDailyGoal ? '✓ Goal Active' : '+ Set Daily Goal'}
+                </button>
+                {hasDailyGoal && (
+                  <div className="mt-3">
+                    <div className="w-full bg-slate-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Goal: {dailyGoal}w | {progress.toFixed(0)}% complete
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Article Carousel */}
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-slate-800" style={{ fontFamily: "'Libertinus Serif', serif" }}>
+                Recommended for You
+              </h3>
+              <Link 
+                to="/article"
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+              >
+                View All Articles →
+              </Link>
+            </div>
+
+            {articles.length > 0 ? (
+              <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
+                <div className="overflow-hidden">
+                  <div
+                    className="flex transition-transform duration-700 ease-in-out"
+                    style={{ transform: `translateX(-${currentArticleIndex * 100}%)` }}
+                  >
+                    {articles.map((article, index) => (
+                      <div key={article.article_id || index} className="w-full flex-shrink-0">
+                        <div className="grid md:grid-cols-2 gap-6 p-8">
+                          {article.image_url && (
+                            <div className="h-64 rounded-xl overflow-hidden">
+                              <img
+                                src={article.image_url}
+                                alt={article.title}
+                                onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&h=800&fit=crop'}
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                              />
+                            </div>
+                          )}
+                          <div className="flex flex-col justify-center">
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block mb-3 w-fit">
+                              {article.category?.[0] || 'Featured'}
+                            </span>
+                            <h4 className="text-2xl font-bold text-slate-800 mb-4 leading-tight" style={{ fontFamily: "'Libertinus Serif', serif" }}>
+                              {article.title}
+                            </h4>
+                            <p className="text-slate-600 mb-4 leading-relaxed line-clamp-3">
+                              {article.description || 'Discover this interesting article curated just for you.'}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-500">{article.source_name}</span>
+                              <a
+                                href={article.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              >
+                                Read Article →
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Carousel Controls */}
+                <button
+                  onClick={handlePrevArticle}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all"
+                >
+                  <ChevronLeft className="w-6 h-6 text-slate-700" />
+                </button>
+                <button
+                  onClick={handleNextArticle}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-lg transition-all"
+                >
+                  <ChevronRight className="w-6 h-6 text-slate-700" />
+                </button>
+
+                {/* Carousel Indicators */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                  {articles.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentArticleIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === currentArticleIndex 
+                          ? 'bg-blue-600 w-8' 
+                          : 'bg-slate-300 hover:bg-slate-400'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">Loading recommended articles...</p>
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
     </div>
   );
 };
