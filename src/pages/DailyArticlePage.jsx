@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Search, Globe, Calendar, TrendingUp, BookOpen, User, ChevronRight, ChevronLeft } from 'lucide-react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Globe, Calendar, TrendingUp, BookOpen, User, ChevronRight, ChevronLeft, Clock } from 'lucide-react';
 import { useAppContext } from '../context/AppContext.jsx';
 
 const DailyArticlePage = () => {
@@ -12,6 +12,7 @@ const DailyArticlePage = () => {
   const [searchInput, setSearchInput] = useState('');
   const [nextPage, setNextPage] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [timer, setTimer] = useState(0);
 
   const fallbackImage = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&h=800&fit=crop';
 
@@ -37,6 +38,21 @@ const DailyArticlePage = () => {
     { id: 'tourism', label: 'Tourism', icon: Globe },
     { id: 'world', label: 'World', icon: Globe },
   ];
+
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const paddedHours = String(hours).padStart(2, '0');
+    const paddedMinutes = String(minutes).padStart(2, '0');
+    const paddedSeconds = String(seconds).padStart(2, '0');
+    return `${paddedHours}:${paddedMinutes}:${paddedSeconds}`;
+  };
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setTimer(t => t + 1), 1000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     fetchArticles();
@@ -118,6 +134,8 @@ const DailyArticlePage = () => {
     return creators[0];
   };
 
+  const formattedTimer = useMemo(() => formatTime(timer), [timer]);
+
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 via-white to-blue-50'}`} style={{ fontFamily: "'Open Sans', sans-serif" }}>
       {/* Search Bar */}
@@ -160,20 +178,26 @@ const DailyArticlePage = () => {
           )}
         </div>
         
-        {/* Country Selector */}
-        <div className="flex items-center justify-center space-x-2 mt-6">
-          <Globe className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-white/80'}`} />
-          <select
-            value={selectedCountry}
-            onChange={(e) => setSelectedCountry(e.target.value)}
-            className={`${theme === 'dark' ? 'bg-gray-700/50 border-gray-600 text-gray-200' : 'bg-white/20 border-white/30 text-white'} backdrop-blur-sm border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50`}
-          >
-            {countries.map(country => (
-              <option key={country.code} value={country.code} className={theme === 'dark' ? 'text-gray-200 bg-gray-700' : 'text-slate-800'}>
-                {country.flag} {country.name}
-              </option>
-            ))}
-          </select>
+        {/* Country Selector & Timer */}
+        <div className="flex items-center justify-center space-x-4 mt-6">
+          <div className="flex items-center space-x-2">
+            <Globe className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-white/80'}`} />
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className={`${theme === 'dark' ? 'bg-gray-700/50 border-gray-600 text-gray-200' : 'bg-white/20 border-white/30 text-white'} backdrop-blur-sm border rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50`}
+            >
+              {countries.map(country => (
+                <option key={country.code} value={country.code} className={theme === 'dark' ? 'text-gray-200 bg-gray-700' : 'text-slate-800'}>
+                  {country.flag} {country.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={`flex items-center space-x-2 ${theme === 'dark' ? 'bg-gray-700/50 border-gray-600 text-gray-200' : 'bg-white/20 border-white/30 text-white'} backdrop-blur-sm border rounded-lg px-4 py-2 text-sm`}>
+            <Clock className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-white/80'}`} />
+            <span className="font-mono tabular-nums">{formattedTimer}</span>
+          </div>
         </div>
       </div>
 
